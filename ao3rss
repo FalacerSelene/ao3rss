@@ -82,6 +82,7 @@ class Work(object):
 
 app = Flask('ao3')
 
+
 @app.route('/work/<workid>')
 def get_work(workid):
     w = Work(workid)
