@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 [unreleased]
 ------------
 
+### Added
+
+- Added `<guid>` elements to each feed item.
+- Added `<description>` element to channel.
+
 [1.0.0] - 2018-11-09
 --------------------
 

@@ -3,6 +3,7 @@
 import requests
 import re
 
+from os.path import normpath, basename
 from flask import Flask
 from bs4 import BeautifulSoup
 from time import strptime, strftime
@@ -29,14 +30,32 @@ class Work(object):
                     .find_all('li'))]
 
     def _convert_chapter(self, chapter):
-        linkelem = chapter.find('a')
-        link = '{}{}'.format(ao3root, linkelem.attrs['href'])
-        title = linkelem.string
-        spanelem = chapter.find('span', class_='datetime')
-        date = re.sub('^\((.*)\)$', '\\1', spanelem.string)
-        time = strptime(date, '%Y-%m-%d')
-        date = strftime('%a, %d %b %Y %T', time)
-        return {'title': title, 'date': date, 'link': link}
+
+        def get_chapter_id(chapter):
+            linkelem = chapter.find('a')
+            chap_id = basename(normpath(linkelem.attrs['href']))
+            return '{}-{}'.format(self.work_id, chap_id)
+
+        def get_chapter_link(chapter):
+            linkelem = chapter.find('a')
+            return '{}{}'.format(ao3root, linkelem.attrs['href'])
+
+        def get_chapter_title(chapter):
+            linkelem = chapter.find('a')
+            return linkelem.string
+
+        def get_chapter_date(chapter):
+            spanelem = chapter.find('span', class_='datetime')
+            date = re.sub('^\\((.*)\\)$', '\\1', spanelem.string)
+            time = strptime(date, '%Y-%m-%d')
+            date = strftime('%a, %d %b %Y %T', time)
+            return date
+
+        link = get_chapter_link(chapter)
+        uid = get_chapter_id(chapter)
+        title = get_chapter_title(chapter)
+        date = get_chapter_date(chapter)
+        return {'title': title, 'date': date, 'link': link, 'uid': uid}
 
     def _get_soup(self, url):
         rsp = requests.get(url)
@@ -62,14 +81,14 @@ class Work(object):
     <channel>
     <title>{}</title>
     <link>{}</link>
+    <description>Updates for {}</description>
     <pubDate>{}</pubDate>
     <lastBuildDate>{}</lastBuildDate>
     <ttl>720</ttl>
 {}
     </channel>
 </rss>
-'''.format(self.title, self.url, d, d, all_chaps).strip()
-
+'''.format(self.title, self.url, self.title, d, d, all_chaps).strip()
 
     def _chapter_rss(self, chapter):
         return '''\
@@ -77,7 +96,12 @@ class Work(object):
         <title>{}</title>
         <link>{}</link>
         <pubDate>{}</pubDate>
-    </item>'''.format(chapter['title'], chapter['link'], chapter['date'])
+        <guid>{}</guid>
+    </item>'''.format(
+            chapter['title'],
+            chapter['link'],
+            chapter['date'],
+            chapter['uid'])
 
 
 app = Flask('ao3')
